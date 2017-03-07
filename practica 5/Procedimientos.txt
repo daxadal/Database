@@ -1,0 +1,112 @@
+SET SERVEROUTPUT ON SIZE (1000000);
+
+--- Apartado 4 ----------------
+
+CREATE OR REPLACE PROCEDURE ComprobarNulos AS
+	cp "Códigos postales I"."Código postal"%TYPE;
+	pobl "Códigos postales I".población%TYPE;
+	prov "Códigos postales I".provincia%TYPE;
+	CURSOR CPI is
+		select "Código postal", población, provincia
+		from "Códigos postales I";
+	excepcion_nulo EXCEPTION;
+BEGIN
+open CPI;
+fetch CPI into cp, pobl, prov;
+while CPI%FOUND loop
+	IF cp IS NULL THEN 
+		RAISE excepcion_nulo;
+	end if;
+	fetch CPI into cp, pobl, prov;
+end loop;
+close CPI;
+
+EXCEPTION
+WHEN excepcion_nulo
+DBMS_OUTPUT.PUT_LINE ('Código postal nulo en la tupla: ' || cp || ', ' || pobl || ', ' || prov ||);
+
+END; 
+
+--- Apartado 5 ----------------
+
+CREATE OR REPLACE PROCEDURE ComprobarPK AS
+	cp "Códigos postales I"."Código postal"%TYPE;
+	pobl "Códigos postales I".población%TYPE;
+	prov "Códigos postales I".provincia%TYPE;
+	CURSOR CPI is
+		select "Código postal", población, provincia
+		from "Códigos postales I";
+	excepcion_pk EXCEPTION;
+BEGIN
+open CPI;
+fetch CPI into cp, pobl, prov;
+while CPI%FOUND loop
+	IF exists (select 1 from "Códigos postales I" 
+			where "Código postal" = cp and (población <> pobl or provincia <> prov)) THEN 
+		RAISE excepcion_pk;
+	end if;
+	fetch CPI into cp, pobl, prov;
+end loop;
+close CPI;
+
+EXCEPTION
+WHEN excepcion_pk
+DBMS_OUTPUT.PUT_LINE ('Código postal repetido en la tupla: ' || cp || ', ' || pobl || ', ' || prov ||);
+
+END; 
+
+--- Apartado 6 ----------------
+
+CREATE OR REPLACE PROCEDURE ComprobarFD AS
+	cp "Códigos postales I"."Código postal"%TYPE;
+	pobl "Códigos postales I".población%TYPE;
+	prov "Códigos postales I".provincia%TYPE;
+	CURSOR CPI is
+		select "Código postal", población, provincia
+		from "Códigos postales I";
+	excepcion_fd EXCEPTION;
+BEGIN
+open CPI;
+fetch CPI into cp, pobl, prov;
+while CPI%FOUND loop
+	IF exists (select 1 from "Códigos postales I" 
+			where población = pobl and provincia <> prov) THEN 
+		RAISE excepcion_fd;
+	end if;
+	fetch CPI into cp, pobl, prov;
+end loop;
+close CPI;
+
+EXCEPTION
+WHEN excepcion_fd
+DBMS_OUTPUT.PUT_LINE ('Dependencia funcional violada en la tupla: ' || cp || ', ' || pobl || ', ' || prov ||);
+
+END; 
+
+--- Apartado 7 ----------------
+
+CREATE OR REPLACE PROCEDURE ComprobarFK AS
+	nif "Domicilios I".DNI%TYPE;
+	str "Domicilios I".calle%TYPE;
+	cp "Domicilios I"."Código postal"%TYPE;
+	CURSOR DI is
+		select DNI, calle, "Código postal"
+		from "Domicilios I";
+	excepcion_fk EXCEPTION;
+BEGIN
+open DI;
+fetch DI into nif, str, cp;
+while DI%FOUND loop
+	IF  not exists (select 1 from "Códigos postales I" 
+			where "Código postal" = cp) THEN 
+		RAISE excepcion_fk;
+	end if;
+	fetch DI into nif, str, cp;
+end loop;
+close DI;
+
+EXCEPTION
+WHEN excepcion_fk
+DBMS_OUTPUT.PUT_LINE ('Integridad referencial violada en la tupla: ' || nif || ', ' || str || ', ' || cp ||);
+
+END; 

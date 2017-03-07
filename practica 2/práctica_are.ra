@@ -1,0 +1,95 @@
+--Eric García de Ceca Elejoste // 3ºDG
+
+/abolish
+
+create table programadores(dni string primary key, nombre string, dirección string, teléfono string);
+create table analistas(dni string primary key, nombre string, dirección string, teléfono string);
+create table distribución(códigopr string, dniemp string, horas int, primary key(códigopr, dniemp));
+create table proyectos(código string, descripción string, dnidir string);
+
+insert into programadores(dni, nombre, dirección, teléfono) values('1','Jacinto','Jazmín 4','91-8888888');
+insert into programadores(dni, nombre, dirección, teléfono) values('2','Herminia','Rosa 4','91-7777777');
+insert into programadores(dni, nombre, dirección, teléfono) values('3','Calixto','Clavel 3','91-1231231');
+insert into programadores(dni, nombre, dirección, teléfono) values('4','Teodora','Petunia 3','91-6666666');
+
+insert into analistas(dni, nombre, dirección, teléfono) values('4','Teodora','Petunia 3','91-6666666');
+insert into analistas(dni, nombre, dirección, teléfono) values('5','Evaristo','Luna 1','91-1111111');
+insert into analistas(dni, nombre, dirección, teléfono) values('6','Luciana','Júpiter 2','91-8888888');
+insert into analistas(dni, nombre, dirección, teléfono) values('7','Nicodemo','Plutón 3', NULL);
+
+insert into distribución(códigopr, dniemp, horas) values('P1','1',10);
+insert into distribución(códigopr, dniemp, horas) values('P1','2',40);
+insert into distribución(códigopr, dniemp, horas) values('P1','4',5);
+insert into distribución(códigopr, dniemp, horas) values('P2','4',10);
+insert into distribución(códigopr, dniemp, horas) values('P3','1',10);
+insert into distribución(códigopr, dniemp, horas) values('P3','3',40);
+insert into distribución(códigopr, dniemp, horas) values('P3','4',5);
+insert into distribución(códigopr, dniemp, horas) values('P3','5',30);
+insert into distribución(códigopr, dniemp, horas) values('P4','4',20);
+insert into distribución(códigopr, dniemp, horas) values('P4','5',10);
+
+insert into proyectos(código, descripción, dnidir) values('P1','Nómina','4');
+insert into proyectos(código, descripción, dnidir) values('P2','Contabilidad','4');
+insert into proyectos(código, descripción, dnidir) values('P3','Producción','5');
+insert into proyectos(código, descripción, dnidir) values('P4','Clientes','5');
+insert into proyectos(código, descripción, dnidir) values('P5','Ventas','6');
+
+--Vista1
+progyana := programadores njoin analistas ; --Calcula los que son programadores Y analistas
+vista1 := project dni (progyana) ;
+
+--Vista2
+horas_por_emp := group_by dniemp dniemp, sum (horas) true (distribución); --Calcula las horas que trabaja cada empleado entre todos los proyectos
+vista2 := rename vista2 (dni,horas) (horas_por_emp);
+
+--Vista3
+empleados := programadores union analistas; --Calcula los que son programadores Ó analistas
+tabla3 := project dni, nombre, códigopr (empleados ljoin dni=dniemp distribución);
+vista3 := rename vista3(dni,nombre,proyecto) (tabla3);
+
+--Vista4
+emp_sin_tlfno := select teléfono is null (empleados);
+vista4 := rename vista4 (dni,nombre) (project dni,nombre (emp_sin_tlfno));
+
+--Vista5
+num_proy(dni, num_proy) :=  group_by dniemp dniemp, count (códigopr) true (distribución); --Nº de proyectos en los que trabaja un empleado
+--Total de horas por empleado en vista2
+media_horas_emp(dni, media_horas) := project dni, horas/num_proy (vista2 njoin num_proy);
+
+media_horas_proy(códigopr,horas) := group_by códigopr códigopr, avg (horas) true (distribución); --Media de horas que hace un empleado en un proyecto
+media_media_horas(horas) := group_by [] avg (horas) true (media_horas_proy); --Media entre los proyectos de la media de horas que invierten los empleados en un proyecto
+
+vista5(dni, número) := project dni, media_horas (select media_horas < horas (media_horas_emp product media_media_horas));
+
+
+--Vista7
+proy_evaristo(proyecto) := project códigopr ((select nombre ='Evaristo' (empleados)) zjoin dni=dniemp distribución ); -- Código de los proyectos en los que trabaja Evaristo
+vista7 := project dni (vista3 division proy_evaristo);
+
+--Vista8
+distr_restringido_evaristo := proy_evaristo zjoin proyecto=códigopr distribución; --tabla distribución restringida a los proyectos en los que trabaja Evaristo
+num_proy_evaristo(numEva) := group_by [] count (proyecto) true (proy_evaristo);
+num_proy_con_evaristo(dniemp, numEva) := group_by dniemp dniemp, count (códigopr) true (distr_restringido_evaristo);
+vista8(dni) := project dniemp (num_proy_con_evaristo njoin num_proy_evaristo);
+
+--Vista6
+emp_con_evaristo := project dniemp (distr_restringido_evaristo); --Empleados que trabajan con Evaristo (incluido Evaristo)
+emp_sin_evaristo := ( project dni (empleados) ) difference emp_con_evaristo; --Empleados que NO trabajan con Evaristo
+vista6(códigopr, dni, horas) := project códigopr, dniemp, horas*1.2 (distribución zjoin dniemp = dni emp_sin_evaristo);
+
+--Vista9
+distribución_amp := distribución zjoin código = códigopr proyectos;
+dni_evaristo(dniemp) := ( project dni (select nombre ='Evaristo' (empleados)) ) union ( project dniemp (distribución_amp zjoin dnidir = dni_evaristo.dniemp dni_evaristo) ); --DNI de empleados que dependen de Evaristo
+vista9(dni) := dni_evaristo;
+
+
+--Mostrar vistas
+select true (vista1);
+select true (vista2);
+select true (vista3);
+select true (vista4);
+select true (vista5);
+select true (vista6);
+select true (vista7);
+select true (vista8);
+select true (vista9);
